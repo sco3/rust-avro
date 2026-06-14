@@ -52,6 +52,15 @@ run-convert-schema:
 convert-6021:
     cargo run --bin converts -- -i data/tdr6021.struct.line -o data/tdr6021.struct.avsc -n tdr6021
 
+# Extract CSV from zst and convert to Avro
+write-6021:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f data/000000_0.csv ]; then
+        zstd -d -k data/000000_0.csv.zst -o data/000000_0.csv
+    fi
+    cargo run --release --bin avro_write -- -i data/000000_0.csv -o 0.avro -s data/tdr6021.struct.avsc
+
 # Generate documentation and open it in the browser.
 doc:
     cargo doc --open

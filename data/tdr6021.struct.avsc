@@ -1,0 +1,671 @@
+{
+  "type": "record",
+  "name": "tdr6021",
+  "fields": [
+    {
+      "name": "id_record_name",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_application",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_protocol",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_record_reason",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_start_timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_end_timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_record_seq_number",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "empty_field_8",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_sgsn_group",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ggsn_group",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_signalling_gsn_ip_address",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_ggsn_ip_address",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_client_ip_address",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_server_ip_address",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_sgsn_udp_port_number",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_ggsn_udp_port_number",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_client_port_number",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_server_port_number",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_gtp_msisdn",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_imsi",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_packets_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_packets_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_packets_total",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_all_bytes_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_all_bytes_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_bytes_total",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_tcp_packets_lost_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_tcp_packets_lost_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_tcp_packets_retransmitted_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_tcp_packets_retransmitted_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_tcp_server_setup_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_tcp_client_setup_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_time_to_first_byte",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_tcp_rtt",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_download_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_upload_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_upload_throughput",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_download_throughput",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_total_throughput",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_application_rtt",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_application_attempts",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_application_status_codes",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_pageuri",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_page_attempts",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_gtp_apn",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_hostname",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_user_agent",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_rat_type",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_imeisv",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_cell_lac",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_cell_id",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_pdp_context_creation_timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_service",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_mcc",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_mnc",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_dns_response_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_bytes_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_bytes_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_req_arp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_req_thp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_rsp_arp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_rsp_thp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_content_type",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_pdp_last_cellid_update_timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ack_packets_up",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_ack_packets_down",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_netro_session_start_timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_client_payload__timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_server_payload__timestamp",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_video_time_to_start",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_video_gap_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_video_playback_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_netro_bitrate_up_req",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_bitrate_down_req",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_bitrate_up_neg",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_bitrate_down_neg",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_req_traffic_class",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_rsp_traffic_class",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_req_guar_bitrate_up",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_rsp_guar_bitrate_up",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_req_guar_bitrate_down",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_qos_rsp_guar_bitrate_down",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_video_bitrate",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_video_duration",
+      "type": [
+        "null",
+        "double"
+      ]
+    },
+    {
+      "name": "id_gtp_direct_tunneling_flag",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_gtp_user_gsn_ip_address",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_l7_app_protocol",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ra_dns",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ra_http_headers",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ra_ssl_session_id",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_netro_ra_ssl_domain_names",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_ip_ttl",
+      "type": [
+        "null",
+        "long"
+      ]
+    },
+    {
+      "name": "id_video_optimal_resolution",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_video_previous_optimal_resolution",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    {
+      "name": "id_video_latency_time",
+      "type": [
+        "null",
+        "double"
+      ]
+    }
+  ]
+}

@@ -1,24 +1,18 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::time::Instant;
 
 use apache_avro::schema::RecordField;
-use apache_avro::{Schema, Writer};
-use apache_avro::types::Value;
+use apache_avro::Schema;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(name = "avro_write", about = "Convert pipe-separated CSV to Avro format")]
 struct Args {
-    /// Input pipe-separated CSV file
     #[arg(short, long)]
     input: String,
-
-    /// Output Avro data file
     #[arg(short, long)]
     output: String,
-
-    /// Avro schema file (.avsc)
     #[arg(short, long)]
     schema: String,
 }
@@ -33,63 +27,217 @@ enum FieldType {
     Float,
 }
 
-fn parse_field_value(raw: &str, field_type: FieldType, union_index: u32) -> Value {
-    if raw == "\\N" {
-        return Value::Union(0, Box::new(Value::Null));
-    }
-    let inner = match field_type {
-        FieldType::String => Value::String(raw.to_string()),
-        FieldType::Long => Value::Long(raw.parse::<i64>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as long: {}", raw, e);
-        })),
-        FieldType::Double => Value::Double(raw.parse::<f64>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as double: {}", raw, e);
-        })),
-        FieldType::Int => Value::Int(raw.parse::<i32>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as int: {}", raw, e);
-        })),
-        FieldType::Boolean => Value::Boolean(raw.parse::<bool>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as boolean: {}", raw, e);
-        })),
-        FieldType::Float => Value::Float(raw.parse::<f32>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as float: {}", raw, e);
-        })),
-    };
-    Value::Union(union_index, Box::new(inner))
+const BLOCK_SIZE: usize = 16000;
+
+struct AvroWriter {
+    buf: Vec<u8>,
+    out: BufWriter<File>,
+    marker: [u8; 16],
+    num_values: usize,
 }
 
-fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
+impl AvroWriter {
+    fn new(schema_json: &str, out: File) -> Self {
+        let mut marker = [0u8; 16];
+        {
+            let mut f = File::open("/dev/urandom").expect("Failed to open /dev/urandom");
+            std::io::Read::read_exact(&mut f, &mut marker).expect("Failed to read random bytes");
+        }
+
+        let mut w = Self {
+            buf: Vec::with_capacity(BLOCK_SIZE * 256),
+            out: BufWriter::with_capacity(1 << 20, out),
+            marker,
+            num_values: 0,
+        };
+        w.write_header(schema_json);
+        w
+    }
+
+    fn write_header(&mut self, schema_json: &str) {
+        self.out.write_all(b"Obj\x01").unwrap();
+
+        let schema_bytes = schema_json.as_bytes();
+
+        let meta_entries = 2u64;
+        encode_long(meta_entries as i64, &mut self.out);
+
+        encode_string(b"avro.schema", &mut self.out);
+        encode_bytes(schema_bytes, &mut self.out);
+
+        encode_string(b"avro.codec", &mut self.out);
+        encode_bytes(b"null", &mut self.out);
+
+        encode_long(0, &mut self.out);
+        self.out.write_all(&self.marker).unwrap();
+    }
+
+    fn write_string(&mut self, s: &str) {
+        encode_string(s.as_bytes(), &mut self.buf);
+    }
+
+    fn write_long(&mut self, v: i64) {
+        encode_long(v, &mut self.buf);
+    }
+
+    fn write_int(&mut self, v: i32) {
+        encode_long(v as i64, &mut self.buf);
+    }
+
+    fn write_double(&mut self, v: f64) {
+        self.buf.write_all(&v.to_le_bytes()).unwrap();
+    }
+
+    fn write_float(&mut self, v: f32) {
+        self.buf.write_all(&v.to_le_bytes()).unwrap();
+    }
+
+    fn write_boolean(&mut self, v: bool) {
+        self.buf.write_all(&[v as u8]).unwrap();
+    }
+
+    fn write_field(&mut self, raw: &str, field_type: FieldType, nullable: bool, null_index: i64, value_index: i64) {
+        if raw == "\\N" {
+            assert!(
+                nullable,
+                "Null marker '\\N' found in non-nullable field"
+            );
+            encode_long(null_index, &mut self.buf);
+            return;
+        }
+        if nullable {
+            encode_long(value_index, &mut self.buf);
+        }
+        match field_type {
+            FieldType::String => self.write_string(raw),
+            FieldType::Long => {
+                let v: i64 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as long: {}", raw, e));
+                self.write_long(v);
+            }
+            FieldType::Double => {
+                let v: f64 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as double: {}", raw, e));
+                self.write_double(v);
+            }
+            FieldType::Int => {
+                let v: i32 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as int: {}", raw, e));
+                self.write_int(v);
+            }
+            FieldType::Boolean => {
+                let v: bool = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as boolean: {}", raw, e));
+                self.write_boolean(v);
+            }
+            FieldType::Float => {
+                let v: f32 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as float: {}", raw, e));
+                self.write_float(v);
+            }
+        }
+    }
+
+    fn flush_block(&mut self) {
+        if self.num_values == 0 {
+            return;
+        }
+        let block_len = self.buf.len();
+        encode_long(self.num_values as i64, &mut self.out);
+        encode_long(block_len as i64, &mut self.out);
+        self.out.write_all(&self.buf).unwrap();
+        self.out.write_all(&self.marker).unwrap();
+        self.buf.clear();
+        self.num_values = 0;
+    }
+
+    fn finish(mut self) {
+        self.flush_block();
+        self.out.flush().unwrap();
+    }
+}
+
+fn encode_varint<W: Write>(mut z: u64, w: &mut W) {
+    loop {
+        if z <= 0x7F {
+            w.write_all(&[z as u8]).unwrap();
+            break;
+        } else {
+            w.write_all(&[0x80 | (z & 0x7F) as u8]).unwrap();
+            z >>= 7;
+        }
+    }
+}
+
+fn encode_long<W: Write>(n: i64, w: &mut W) {
+    let z = ((n << 1) ^ (n >> 63)) as u64;
+    encode_varint(z, w);
+}
+
+fn encode_bytes<W: Write>(b: &[u8], w: &mut W) {
+    encode_long(b.len() as i64, w);
+    w.write_all(b).unwrap();
+}
+
+fn encode_string<W: Write>(s: &[u8], w: &mut W) {
+    encode_bytes(s, w);
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FieldInfo {
+    field_type: FieldType,
+    nullable: bool,
+    null_index: i64,
+    value_index: i64,
+}
+
+fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
     match &field.schema {
         Schema::Union(u) => {
             let variants = u.variants();
-            if variants.len() == 2 && matches!(variants[0], Schema::Null) {
-                    let t = match &variants[1] {
+            let null_idx = variants.iter().position(|v| matches!(v, Schema::Null));
+            let non_null_count = variants.iter().filter(|v| !matches!(v, Schema::Null)).count();
+
+            match (null_idx, non_null_count) {
+                (Some(ni), 1) => {
+                    let value_idx = variants.iter().position(|v| !matches!(v, Schema::Null)).unwrap();
+                    let ft = match &variants[value_idx] {
                         Schema::String => FieldType::String,
                         Schema::Long => FieldType::Long,
                         Schema::Double => FieldType::Double,
                         Schema::Int => FieldType::Int,
                         Schema::Boolean => FieldType::Boolean,
                         Schema::Float => FieldType::Float,
-                        _ => FieldType::String,
+                        other => {
+                            return Err(format!(
+                                "Field '{}': non-null union variant {:?} is not a supported type",
+                                field.name, other
+                            ));
+                        }
                     };
-                    return (t, 1u32);
+                    Ok(FieldInfo { field_type: ft, nullable: true, null_index: ni as i64, value_index: value_idx as i64 })
                 }
-            (FieldType::String, 0u32)
+                (Some(_), _) => Err(format!(
+                    "Field '{}': union must be [null, T] with exactly one non-null type, found {} non-null variants",
+                    field.name, non_null_count
+                )),
+                (None, _) => Err(format!(
+                    "Field '{}': nullable union must contain a null variant",
+                    field.name
+                )),
+            }
         }
-        Schema::String => (FieldType::String, 0u32),
-        Schema::Long => (FieldType::Long, 0u32),
-        Schema::Double => (FieldType::Double, 0u32),
-        Schema::Int => (FieldType::Int, 0u32),
-        Schema::Boolean => (FieldType::Boolean, 0u32),
-        Schema::Float => (FieldType::Float, 0u32),
-        _ => (FieldType::String, 0u32),
+        Schema::String => Ok(FieldInfo { field_type: FieldType::String, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Long => Ok(FieldInfo { field_type: FieldType::Long, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Double => Ok(FieldInfo { field_type: FieldType::Double, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Int => Ok(FieldInfo { field_type: FieldType::Int, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Boolean => Ok(FieldInfo { field_type: FieldType::Boolean, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Float => Ok(FieldInfo { field_type: FieldType::Float, nullable: false, null_index: 0, value_index: 0 }),
+        other => Err(format!(
+            "Field '{}': schema kind {:?} is not supported",
+            field.name, other
+        )),
     }
 }
 
 fn main() {
     let args = Args::parse();
 
-    // Read and parse the schema
     let schema_str = std::fs::read_to_string(&args.schema)
         .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {}", args.schema, e));
     let schema = Schema::parse_str(&schema_str)
@@ -100,18 +248,22 @@ fn main() {
         _ => panic!("Schema must be a record type"),
     };
 
-    let field_infos: Vec<(FieldType, u32)> = record_schema.fields.iter().map(extract_field_info).collect();
+    let field_infos: Vec<FieldInfo> = record_schema
+        .fields
+        .iter()
+        .map(extract_field_info)
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|e| panic!("Schema error: {}", e));
     let num_fields = field_infos.len();
 
-    // Open input CSV
     let csv_file = File::open(&args.input)
         .unwrap_or_else(|e| panic!("Failed to open input file '{}': {}", args.input, e));
     let reader = BufReader::new(csv_file);
 
-    // Open output Avro file
     let out_file = File::create(&args.output)
         .unwrap_or_else(|e| panic!("Failed to create output file '{}': {}", args.output, e));
-    let mut writer = Writer::new(&schema, out_file);
+
+    let mut writer = AvroWriter::new(&schema_str, out_file);
 
     let mut line_count: u64 = 0;
     let mut written: u64 = 0;
@@ -137,23 +289,21 @@ fn main() {
             continue;
         }
 
-        let mut record = apache_avro::types::Record::new(&schema)
-            .expect("Failed to create record from schema");
-
         for i in 0..num_fields {
-            let (field_type, union_idx) = field_infos[i];
-            let value = parse_field_value(columns[i], field_type, union_idx);
-            record.fields[i].1 = value;
+            let fi = field_infos[i];
+            writer.write_field(columns[i], fi.field_type, fi.nullable, fi.null_index, fi.value_index);
+        }
+        writer.num_values += 1;
+
+        if writer.buf.len() >= BLOCK_SIZE * 256 {
+            writer.flush_block();
         }
 
-        writer
-            .append(record)
-            .expect("Failed to append record to writer");
         written += 1;
         line_count += 1;
     }
 
-    writer.flush().expect("Failed to flush writer");
+    writer.finish();
     let elapsed = start.elapsed();
     println!(
         "Converted {} records from '{}' to '{}' in {:.3}s ({:.0} records/s)",

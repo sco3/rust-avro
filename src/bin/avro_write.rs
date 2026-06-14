@@ -101,8 +101,7 @@ fn main() {
     };
 
     let field_infos: Vec<(FieldType, u32)> = record_schema.fields.iter().map(extract_field_info).collect();
-    let field_names: Vec<&str> = record_schema.fields.iter().map(|f| f.name.as_str()).collect();
-    let num_fields = field_names.len();
+    let num_fields = field_infos.len();
 
     // Open input CSV
     let csv_file = File::open(&args.input)
@@ -144,7 +143,7 @@ fn main() {
         for i in 0..num_fields {
             let (field_type, union_idx) = field_infos[i];
             let value = parse_field_value(columns[i], field_type, union_idx);
-            record.put(field_names[i], value);
+            record.fields[i].1 = value;
         }
 
         writer

@@ -106,9 +106,11 @@ impl AvroWriter {
 
     fn write_field(&mut self, raw: &str, field_type: FieldType, nullable: bool) {
         if raw == "\\N" {
-            if nullable {
-                self.write_union_null();
-            }
+            assert!(
+                nullable,
+                "Null marker '\\N' found in non-nullable field"
+            );
+            self.write_union_null();
             return;
         }
         if nullable {

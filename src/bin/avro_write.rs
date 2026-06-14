@@ -23,46 +23,66 @@ struct Args {
     schema: String,
 }
 
-fn parse_field_value(raw: &str, field_type: &str, union_index: u32) -> Value {
+#[derive(Clone, Copy, Debug)]
+enum FieldType {
+    String,
+    Long,
+    Double,
+    Int,
+    Boolean,
+    Float,
+}
+
+fn parse_field_value(raw: &str, field_type: FieldType, union_index: u32) -> Value {
     if raw == "\\N" {
         return Value::Union(0, Box::new(Value::Null));
     }
     let inner = match field_type {
-        "string" => Value::String(raw.to_string()),
-        "long" => Value::Long(raw.parse::<i64>().unwrap_or_else(|e| {
+        FieldType::String => Value::String(raw.to_string()),
+        FieldType::Long => Value::Long(raw.parse::<i64>().unwrap_or_else(|e| {
             panic!("Failed to parse '{}' as long: {}", raw, e);
         })),
-        "double" => Value::Double(raw.parse::<f64>().unwrap_or_else(|e| {
+        FieldType::Double => Value::Double(raw.parse::<f64>().unwrap_or_else(|e| {
             panic!("Failed to parse '{}' as double: {}", raw, e);
         })),
-        _ => Value::String(raw.to_string()),
+        FieldType::Int => Value::Int(raw.parse::<i32>().unwrap_or_else(|e| {
+            panic!("Failed to parse '{}' as int: {}", raw, e);
+        })),
+        FieldType::Boolean => Value::Boolean(raw.parse::<bool>().unwrap_or_else(|e| {
+            panic!("Failed to parse '{}' as boolean: {}", raw, e);
+        })),
+        FieldType::Float => Value::Float(raw.parse::<f32>().unwrap_or_else(|e| {
+            panic!("Failed to parse '{}' as float: {}", raw, e);
+        })),
     };
     Value::Union(union_index, Box::new(inner))
 }
 
-fn extract_field_info(field: &RecordField) -> (&str, u32) {
+fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
     match &field.schema {
         Schema::Union(u) => {
             let variants = u.variants();
             if variants.len() == 2 && matches!(variants[0], Schema::Null) {
                     let t = match &variants[1] {
-                        Schema::String => "string",
-                        Schema::Long => "long",
-                        Schema::Double => "double",
-                        Schema::Int => "int",
-                        Schema::Boolean => "boolean",
-                        Schema::Float => "float",
-                        _ => "string",
+                        Schema::String => FieldType::String,
+                        Schema::Long => FieldType::Long,
+                        Schema::Double => FieldType::Double,
+                        Schema::Int => FieldType::Int,
+                        Schema::Boolean => FieldType::Boolean,
+                        Schema::Float => FieldType::Float,
+                        _ => FieldType::String,
                     };
                     return (t, 1u32);
                 }
-            ("string", 0u32)
+            (FieldType::String, 0u32)
         }
-        Schema::String => ("string", 0u32),
-        Schema::Long => ("long", 0u32),
-        Schema::Double => ("double", 0u32),
-        Schema::Int => ("int", 0u32),
-        _ => ("string", 0u32),
+        Schema::String => (FieldType::String, 0u32),
+        Schema::Long => (FieldType::Long, 0u32),
+        Schema::Double => (FieldType::Double, 0u32),
+        Schema::Int => (FieldType::Int, 0u32),
+        Schema::Boolean => (FieldType::Boolean, 0u32),
+        Schema::Float => (FieldType::Float, 0u32),
+        _ => (FieldType::String, 0u32),
     }
 }
 
@@ -80,7 +100,7 @@ fn main() {
         _ => panic!("Schema must be a record type"),
     };
 
-    let field_infos: Vec<(&str, u32)> = record_schema.fields.iter().map(extract_field_info).collect();
+    let field_infos: Vec<(FieldType, u32)> = record_schema.fields.iter().map(extract_field_info).collect();
     let field_names: Vec<&str> = record_schema.fields.iter().map(|f| f.name.as_str()).collect();
     let num_fields = field_names.len();
 

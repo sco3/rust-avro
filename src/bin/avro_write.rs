@@ -72,14 +72,6 @@ impl AvroWriter {
         self.out.write_all(&self.marker).unwrap();
     }
 
-    fn write_union_null(&mut self) {
-        encode_long(0, &mut self.buf);
-    }
-
-    fn write_union_value(&mut self, index: i64) {
-        encode_long(index, &mut self.buf);
-    }
-
     fn write_string(&mut self, s: &str) {
         encode_string(s.as_bytes(), &mut self.buf);
     }
@@ -104,17 +96,17 @@ impl AvroWriter {
         self.buf.write_all(&[v as u8]).unwrap();
     }
 
-    fn write_field(&mut self, raw: &str, field_type: FieldType, nullable: bool) {
+    fn write_field(&mut self, raw: &str, field_type: FieldType, nullable: bool, null_index: i64, value_index: i64) {
         if raw == "\\N" {
             assert!(
                 nullable,
                 "Null marker '\\N' found in non-nullable field"
             );
-            self.write_union_null();
+            encode_long(null_index, &mut self.buf);
             return;
         }
         if nullable {
-            self.write_union_value(1);
+            encode_long(value_index, &mut self.buf);
         }
         match field_type {
             FieldType::String => self.write_string(raw),
@@ -190,33 +182,56 @@ fn encode_string<W: Write>(s: &[u8], w: &mut W) {
 struct FieldInfo {
     field_type: FieldType,
     nullable: bool,
+    null_index: i64,
+    value_index: i64,
 }
 
-fn extract_field_info(field: &RecordField) -> FieldInfo {
+fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
     match &field.schema {
         Schema::Union(u) => {
             let variants = u.variants();
-            if variants.len() == 2 && matches!(variants[0], Schema::Null) {
-                let ft = match &variants[1] {
-                    Schema::String => FieldType::String,
-                    Schema::Long => FieldType::Long,
-                    Schema::Double => FieldType::Double,
-                    Schema::Int => FieldType::Int,
-                    Schema::Boolean => FieldType::Boolean,
-                    Schema::Float => FieldType::Float,
-                    _ => FieldType::String,
-                };
-                return FieldInfo { field_type: ft, nullable: true };
+            let null_idx = variants.iter().position(|v| matches!(v, Schema::Null));
+            let non_null_count = variants.iter().filter(|v| !matches!(v, Schema::Null)).count();
+
+            match (null_idx, non_null_count) {
+                (Some(ni), 1) => {
+                    let value_idx = variants.iter().position(|v| !matches!(v, Schema::Null)).unwrap();
+                    let ft = match &variants[value_idx] {
+                        Schema::String => FieldType::String,
+                        Schema::Long => FieldType::Long,
+                        Schema::Double => FieldType::Double,
+                        Schema::Int => FieldType::Int,
+                        Schema::Boolean => FieldType::Boolean,
+                        Schema::Float => FieldType::Float,
+                        other => {
+                            return Err(format!(
+                                "Field '{}': non-null union variant {:?} is not a supported type",
+                                field.name, other
+                            ));
+                        }
+                    };
+                    Ok(FieldInfo { field_type: ft, nullable: true, null_index: ni as i64, value_index: value_idx as i64 })
+                }
+                (Some(_), _) => Err(format!(
+                    "Field '{}': union must be [null, T] with exactly one non-null type, found {} non-null variants",
+                    field.name, non_null_count
+                )),
+                (None, _) => Err(format!(
+                    "Field '{}': nullable union must contain a null variant",
+                    field.name
+                )),
             }
-            FieldInfo { field_type: FieldType::String, nullable: false }
         }
-        Schema::String => FieldInfo { field_type: FieldType::String, nullable: false },
-        Schema::Long => FieldInfo { field_type: FieldType::Long, nullable: false },
-        Schema::Double => FieldInfo { field_type: FieldType::Double, nullable: false },
-        Schema::Int => FieldInfo { field_type: FieldType::Int, nullable: false },
-        Schema::Boolean => FieldInfo { field_type: FieldType::Boolean, nullable: false },
-        Schema::Float => FieldInfo { field_type: FieldType::Float, nullable: false },
-        _ => FieldInfo { field_type: FieldType::String, nullable: false },
+        Schema::String => Ok(FieldInfo { field_type: FieldType::String, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Long => Ok(FieldInfo { field_type: FieldType::Long, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Double => Ok(FieldInfo { field_type: FieldType::Double, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Int => Ok(FieldInfo { field_type: FieldType::Int, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Boolean => Ok(FieldInfo { field_type: FieldType::Boolean, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::Float => Ok(FieldInfo { field_type: FieldType::Float, nullable: false, null_index: 0, value_index: 0 }),
+        other => Err(format!(
+            "Field '{}': schema kind {:?} is not supported",
+            field.name, other
+        )),
     }
 }
 
@@ -233,7 +248,12 @@ fn main() {
         _ => panic!("Schema must be a record type"),
     };
 
-    let field_infos: Vec<FieldInfo> = record_schema.fields.iter().map(extract_field_info).collect();
+    let field_infos: Vec<FieldInfo> = record_schema
+        .fields
+        .iter()
+        .map(extract_field_info)
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|e| panic!("Schema error: {}", e));
     let num_fields = field_infos.len();
 
     let csv_file = File::open(&args.input)
@@ -271,7 +291,7 @@ fn main() {
 
         for i in 0..num_fields {
             let fi = field_infos[i];
-            writer.write_field(columns[i], fi.field_type, fi.nullable);
+            writer.write_field(columns[i], fi.field_type, fi.nullable, fi.null_index, fi.value_index);
         }
         writer.num_values += 1;
 

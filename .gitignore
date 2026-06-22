@@ -2,3 +2,6 @@
 .idea
 data/000000_0.csv
 0.avro
+0.avsc
+0.json
+avro-tools-1.12.1.jar

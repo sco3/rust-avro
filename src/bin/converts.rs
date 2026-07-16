@@ -67,9 +67,14 @@ fn main() {
             continue;
         }
         let parts: Vec<&str> = pair.split(':').collect();
-        if parts.len() != 2 {
-            panic!("Invalid field definition '{}', expected 'name:type'", pair);
-        }
+
+        assert_eq!(
+            parts.len(),
+            2,
+            "Invalid field definition '{}', expected 'name:type'",
+            pair
+        );
+
         let field_name = parts[0].trim();
         let type_token = parts[1].trim();
         let type_char = type_token

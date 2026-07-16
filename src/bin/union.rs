@@ -5,10 +5,10 @@ fn main() {
     let field_variants = vec![Schema::Null, Schema::Double];
     match UnionSchema::new(field_variants) {
         Ok(s) => {
-            println!("{s:?}")
+            println!("{s:?}");
         }
         Err(e) => {
-            println!("{e:?}")
+            println!("{e:?}");
         }
     }
 }

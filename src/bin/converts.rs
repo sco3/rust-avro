@@ -71,8 +71,7 @@ fn main() {
         assert_eq!(
             parts.len(),
             2,
-            "Invalid field definition '{}', expected 'name:type'",
-            pair
+            "Invalid field definition '{pair}', expected 'name:type'",
         );
 
         let field_name = parts[0].trim();
@@ -81,8 +80,15 @@ fn main() {
             .chars()
             .next()
             .expect("Empty type token in schema definition");
-        let primitive_schema =
-            avro_schema_from_char(type_char).unwrap_or_else(|| panic!("Unsupported type character '{}' in field '{}'. Supported: s, l, d (case‑insensitive).", type_char, field_name));
+
+        let primitive_schema = avro_schema_from_char(type_char) //
+            .unwrap_or_else(|| {
+                panic!(
+                    "Unsupported type character '{type_char}' in field '{field_name}'. \
+                    Supported: s, l, d (case‑insensitive)."
+                )
+            });
+
         // Determine nullability: lower‑case => nullable (union with null), upper‑case => non‑null.
         let field_schema = if type_char.is_ascii_uppercase() {
             primitive_schema

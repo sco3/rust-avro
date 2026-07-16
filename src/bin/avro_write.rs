@@ -2,12 +2,15 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::time::Instant;
 
-use apache_avro::schema::RecordField;
 use apache_avro::Schema;
+use apache_avro::schema::RecordField;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(name = "avro_write", about = "Convert pipe-separated CSV to Avro format")]
+#[command(
+    name = "avro_write",
+    about = "Convert pipe-separated CSV to Avro format"
+)]
 struct Args {
     #[arg(short, long)]
     input: String,
@@ -96,12 +99,16 @@ impl AvroWriter {
         self.buf.write_all(&[v as u8]).unwrap();
     }
 
-    fn write_field(&mut self, raw: &str, field_type: FieldType, nullable: bool, null_index: i64, value_index: i64) {
+    fn write_field(
+        &mut self,
+        raw: &str,
+        field_type: FieldType,
+        nullable: bool,
+        null_index: i64,
+        value_index: i64,
+    ) {
         if raw == "\\N" {
-            assert!(
-                nullable,
-                "Null marker '\\N' found in non-nullable field"
-            );
+            assert!(nullable, "Null marker '\\N' found in non-nullable field");
             encode_long(null_index, &mut self.buf);
             return;
         }
@@ -111,23 +118,33 @@ impl AvroWriter {
         match field_type {
             FieldType::String => self.write_string(raw),
             FieldType::Long => {
-                let v: i64 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as long: {}", raw, e));
+                let v: i64 = raw
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as long: {}", raw, e));
                 self.write_long(v);
             }
             FieldType::Double => {
-                let v: f64 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as double: {}", raw, e));
+                let v: f64 = raw
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as double: {}", raw, e));
                 self.write_double(v);
             }
             FieldType::Int => {
-                let v: i32 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as int: {}", raw, e));
+                let v: i32 = raw
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as int: {}", raw, e));
                 self.write_int(v);
             }
             FieldType::Boolean => {
-                let v: bool = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as boolean: {}", raw, e));
+                let v: bool = raw
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as boolean: {}", raw, e));
                 self.write_boolean(v);
             }
             FieldType::Float => {
-                let v: f32 = raw.parse().unwrap_or_else(|e| panic!("Failed to parse '{}' as float: {}", raw, e));
+                let v: f32 = raw
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as float: {}", raw, e));
                 self.write_float(v);
             }
         }
@@ -157,10 +174,9 @@ fn encode_varint<W: Write>(mut z: u64, w: &mut W) {
         if z <= 0x7F {
             w.write_all(&[z as u8]).unwrap();
             break;
-        } else {
-            w.write_all(&[0x80 | (z & 0x7F) as u8]).unwrap();
-            z >>= 7;
         }
+        w.write_all(&[0x80 | (z & 0x7F) as u8]).unwrap();
+        z >>= 7;
     }
 }
 
@@ -191,11 +207,17 @@ fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
         Schema::Union(u) => {
             let variants = u.variants();
             let null_idx = variants.iter().position(|v| matches!(v, Schema::Null));
-            let non_null_count = variants.iter().filter(|v| !matches!(v, Schema::Null)).count();
+            let non_null_count = variants
+                .iter()
+                .filter(|v| !matches!(v, Schema::Null))
+                .count();
 
             match (null_idx, non_null_count) {
                 (Some(ni), 1) => {
-                    let value_idx = variants.iter().position(|v| !matches!(v, Schema::Null)).unwrap();
+                    let value_idx = variants
+                        .iter()
+                        .position(|v| !matches!(v, Schema::Null))
+                        .unwrap();
                     let ft = match &variants[value_idx] {
                         Schema::String => FieldType::String,
                         Schema::Long => FieldType::Long,
@@ -210,7 +232,12 @@ fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
                             ));
                         }
                     };
-                    Ok(FieldInfo { field_type: ft, nullable: true, null_index: ni as i64, value_index: value_idx as i64 })
+                    Ok(FieldInfo {
+                        field_type: ft,
+                        nullable: true,
+                        null_index: ni as i64,
+                        value_index: value_idx as i64,
+                    })
                 }
                 (Some(_), _) => Err(format!(
                     "Field '{}': union must be [null, T] with exactly one non-null type, found {} non-null variants",
@@ -222,12 +249,42 @@ fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
                 )),
             }
         }
-        Schema::String => Ok(FieldInfo { field_type: FieldType::String, nullable: false, null_index: 0, value_index: 0 }),
-        Schema::Long => Ok(FieldInfo { field_type: FieldType::Long, nullable: false, null_index: 0, value_index: 0 }),
-        Schema::Double => Ok(FieldInfo { field_type: FieldType::Double, nullable: false, null_index: 0, value_index: 0 }),
-        Schema::Int => Ok(FieldInfo { field_type: FieldType::Int, nullable: false, null_index: 0, value_index: 0 }),
-        Schema::Boolean => Ok(FieldInfo { field_type: FieldType::Boolean, nullable: false, null_index: 0, value_index: 0 }),
-        Schema::Float => Ok(FieldInfo { field_type: FieldType::Float, nullable: false, null_index: 0, value_index: 0 }),
+        Schema::String => Ok(FieldInfo {
+            field_type: FieldType::String,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
+        Schema::Long => Ok(FieldInfo {
+            field_type: FieldType::Long,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
+        Schema::Double => Ok(FieldInfo {
+            field_type: FieldType::Double,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
+        Schema::Int => Ok(FieldInfo {
+            field_type: FieldType::Int,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
+        Schema::Boolean => Ok(FieldInfo {
+            field_type: FieldType::Boolean,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
+        Schema::Float => Ok(FieldInfo {
+            field_type: FieldType::Float,
+            nullable: false,
+            null_index: 0,
+            value_index: 0,
+        }),
         other => Err(format!(
             "Field '{}': schema kind {:?} is not supported",
             field.name, other
@@ -240,8 +297,8 @@ fn main() {
 
     let schema_str = std::fs::read_to_string(&args.schema)
         .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {}", args.schema, e));
-    let schema = Schema::parse_str(&schema_str)
-        .unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
+    let schema =
+        Schema::parse_str(&schema_str).unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
 
     let record_schema = match &schema {
         Schema::Record(rs) => rs,
@@ -291,7 +348,13 @@ fn main() {
 
         for i in 0..num_fields {
             let fi = field_infos[i];
-            writer.write_field(columns[i], fi.field_type, fi.nullable, fi.null_index, fi.value_index);
+            writer.write_field(
+                columns[i],
+                fi.field_type,
+                fi.nullable,
+                fi.null_index,
+                fi.value_index,
+            );
         }
         writer.num_values += 1;
 

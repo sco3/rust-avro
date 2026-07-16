@@ -60,6 +60,8 @@ write-6021:
         zstd -d -k data/000000_0.csv.zst -o data/000000_0.csv
     fi
     cargo run --release --bin avro_write -- -i data/000000_0.csv -o 0.avro -s data/tdr6021.struct.avsc
+    cargo run --release --bin avro_write_generic_record -- -i data/000000_0.csv -o 0.avro -s data/tdr6021.struct.avsc
+    
 
 # Generate documentation and open it in the browser.
 doc:

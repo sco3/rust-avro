@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
-use apache_avro::schema::{Name, RecordField, RecordFieldOrder, RecordSchema, UnionSchema};
 use apache_avro::Schema;
+use apache_avro::schema::{Name, RecordField, RecordFieldOrder, RecordSchema, UnionSchema};
 
 /// Command line arguments for the converter.
 #[derive(Parser, Debug)]
@@ -43,9 +43,13 @@ fn main() {
         let bytes = reader
             .read_line(&mut first_line)
             .expect("Failed to read line from input file");
-        if bytes == 0 {
-            panic!("Input file '{}' does not contain a schema definition line", args.input);
-        }
+
+        assert!(
+            bytes > 0,
+            "Input file '{}' does not contain a schema definition line",
+            args.input
+        );
+
         if first_line.trim().is_empty() {
             continue;
         }

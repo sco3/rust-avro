@@ -3,12 +3,15 @@ use std::io::{BufRead, BufReader};
 use std::time::Instant;
 
 use apache_avro::schema::RecordField;
-use apache_avro::{Schema, Writer};
 use apache_avro::types::Value;
+use apache_avro::{Schema, Writer};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(name = "avro_write", about = "Convert pipe-separated CSV to Avro format")]
+#[command(
+    name = "avro_write",
+    about = "Convert pipe-separated CSV to Avro format"
+)]
 struct Args {
     /// Input pipe-separated CSV file
     #[arg(short, long)]
@@ -63,17 +66,17 @@ fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
         Schema::Union(u) => {
             let variants = u.variants();
             if variants.len() == 2 && matches!(variants[0], Schema::Null) {
-                    let t = match &variants[1] {
-                        Schema::String => FieldType::String,
-                        Schema::Long => FieldType::Long,
-                        Schema::Double => FieldType::Double,
-                        Schema::Int => FieldType::Int,
-                        Schema::Boolean => FieldType::Boolean,
-                        Schema::Float => FieldType::Float,
-                        _ => FieldType::String,
-                    };
-                    return (t, 1u32);
-                }
+                let t = match &variants[1] {
+                    Schema::String => FieldType::String,
+                    Schema::Long => FieldType::Long,
+                    Schema::Double => FieldType::Double,
+                    Schema::Int => FieldType::Int,
+                    Schema::Boolean => FieldType::Boolean,
+                    Schema::Float => FieldType::Float,
+                    _ => FieldType::String,
+                };
+                return (t, 1u32);
+            }
             (FieldType::String, 0u32)
         }
         Schema::String => (FieldType::String, 0u32),
@@ -92,15 +95,19 @@ fn main() {
     // Read and parse the schema
     let schema_str = std::fs::read_to_string(&args.schema)
         .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {}", args.schema, e));
-    let schema = Schema::parse_str(&schema_str)
-        .unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
+    let schema =
+        Schema::parse_str(&schema_str).unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
 
     let record_schema = match &schema {
         Schema::Record(rs) => rs,
         _ => panic!("Schema must be a record type"),
     };
 
-    let field_infos: Vec<(FieldType, u32)> = record_schema.fields.iter().map(extract_field_info).collect();
+    let field_infos: Vec<(FieldType, u32)> = record_schema
+        .fields
+        .iter()
+        .map(extract_field_info)
+        .collect();
     let num_fields = field_infos.len();
 
     // Open input CSV
@@ -137,8 +144,8 @@ fn main() {
             continue;
         }
 
-        let mut record = apache_avro::types::Record::new(&schema)
-            .expect("Failed to create record from schema");
+        let mut record =
+            apache_avro::types::Record::new(&schema).expect("Failed to create record from schema");
 
         for i in 0..num_fields {
             let (field_type, union_idx) = field_infos[i];

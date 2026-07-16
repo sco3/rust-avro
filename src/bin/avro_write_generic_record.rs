@@ -67,7 +67,7 @@ fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
             let variants = u.variants();
             if variants.len() == 2 && matches!(variants[0], Schema::Null) {
                 let t = match &variants[1] {
-                    Schema::String => FieldType::String,
+                    //Schema::String => FieldType::String,
                     Schema::Long => FieldType::Long,
                     Schema::Double => FieldType::Double,
                     Schema::Int => FieldType::Int,
@@ -79,7 +79,7 @@ fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
             }
             (FieldType::String, 0u32)
         }
-        Schema::String => (FieldType::String, 0u32),
+        //Schema::String => (FieldType::String, 0u32),
         Schema::Long => (FieldType::Long, 0u32),
         Schema::Double => (FieldType::Double, 0u32),
         Schema::Int => (FieldType::Int, 0u32),
@@ -88,19 +88,19 @@ fn extract_field_info(field: &RecordField) -> (FieldType, u32) {
         _ => (FieldType::String, 0u32),
     }
 }
-
+#[allow(clippy::cast_precision_loss)]
 fn main() {
     let args = Args::parse();
 
     // Read and parse the schema
     let schema_str = std::fs::read_to_string(&args.schema)
-        .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {}", args.schema, e));
-    let schema =
-        Schema::parse_str(&schema_str).unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
+        .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {e}", args.schema));
 
-    let record_schema = match &schema {
-        Schema::Record(rs) => rs,
-        _ => panic!("Schema must be a record type"),
+    let schema = Schema::parse_str(&schema_str) //
+        .unwrap_or_else(|e| panic!("Failed to parse schema: {e}"));
+
+    let Schema::Record(record_schema) = &schema else {
+        panic!("Schema must be a record type")
     };
 
     let field_infos: Vec<(FieldType, u32)> = record_schema

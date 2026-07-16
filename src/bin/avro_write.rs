@@ -62,8 +62,8 @@ impl AvroWriter {
 
         let schema_bytes = schema_json.as_bytes();
 
-        let meta_entries = 2u64;
-        encode_long(meta_entries as i64, &mut self.out);
+        let meta_entries = 2i64;
+        encode_long(meta_entries, &mut self.out);
 
         encode_string(b"avro.schema", &mut self.out);
         encode_bytes(schema_bytes, &mut self.out);
@@ -83,6 +83,7 @@ impl AvroWriter {
         encode_long(v, &mut self.buf);
     }
 
+    #[allow(clippy::cast_lossless)]
     fn write_int(&mut self, v: i32) {
         encode_long(v as i64, &mut self.buf);
     }
@@ -96,7 +97,7 @@ impl AvroWriter {
     }
 
     fn write_boolean(&mut self, v: bool) {
-        self.buf.write_all(&[v as u8]).unwrap();
+        self.buf.write_all(&[u8::from(v)]).unwrap();
     }
 
     fn write_field(
@@ -120,36 +121,36 @@ impl AvroWriter {
             FieldType::Long => {
                 let v: i64 = raw
                     .parse()
-                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as long: {}", raw, e));
+                    .unwrap_or_else(|e| panic!("Failed to parse '{raw}' as long: {e}"));
                 self.write_long(v);
             }
             FieldType::Double => {
                 let v: f64 = raw
                     .parse()
-                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as double: {}", raw, e));
+                    .unwrap_or_else(|e| panic!("Failed to parse '{raw}' as double: {e}"));
                 self.write_double(v);
             }
             FieldType::Int => {
                 let v: i32 = raw
                     .parse()
-                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as int: {}", raw, e));
+                    .unwrap_or_else(|e| panic!("Failed to parse '{raw}' as int: {e}"));
                 self.write_int(v);
             }
             FieldType::Boolean => {
                 let v: bool = raw
                     .parse()
-                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as boolean: {}", raw, e));
+                    .unwrap_or_else(|e| panic!("Failed to parse '{raw}' as boolean: {e}"));
                 self.write_boolean(v);
             }
             FieldType::Float => {
                 let v: f32 = raw
                     .parse()
-                    .unwrap_or_else(|e| panic!("Failed to parse '{}' as float: {}", raw, e));
+                    .unwrap_or_else(|e| panic!("Failed to parse '{raw}' as float: {e}"));
                 self.write_float(v);
             }
         }
     }
-
+    #[allow(clippy::cast_possible_wrap)]
     fn flush_block(&mut self) {
         if self.num_values == 0 {
             return;
@@ -172,19 +173,21 @@ impl AvroWriter {
 fn encode_varint<W: Write>(mut z: u64, w: &mut W) {
     loop {
         if z <= 0x7F {
-            w.write_all(&[z as u8]).unwrap();
+            //w.write_all(&[z as u8]).unwrap();
+            // log error
+            let _ = w.write_all(&[u8::try_from(z).unwrap()]);
             break;
         }
         w.write_all(&[0x80 | (z & 0x7F) as u8]).unwrap();
         z >>= 7;
     }
 }
-
+#[allow(clippy::cast_sign_loss)]
 fn encode_long<W: Write>(n: i64, w: &mut W) {
     let z = ((n << 1) ^ (n >> 63)) as u64;
     encode_varint(z, w);
 }
-
+#[allow(clippy::cast_possible_wrap)]
 fn encode_bytes<W: Write>(b: &[u8], w: &mut W) {
     encode_long(b.len() as i64, w);
     w.write_all(b).unwrap();
@@ -202,6 +205,7 @@ struct FieldInfo {
     value_index: i64,
 }
 
+#[allow(clippy::cast_possible_wrap)]
 fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
     match &field.schema {
         Schema::Union(u) => {
@@ -291,18 +295,17 @@ fn extract_field_info(field: &RecordField) -> Result<FieldInfo, String> {
         )),
     }
 }
-
+#[allow(clippy::cast_precision_loss)]
 fn main() {
     let args = Args::parse();
 
     let schema_str = std::fs::read_to_string(&args.schema)
         .unwrap_or_else(|e| panic!("Failed to read schema file '{}': {}", args.schema, e));
     let schema =
-        Schema::parse_str(&schema_str).unwrap_or_else(|e| panic!("Failed to parse schema: {}", e));
+        Schema::parse_str(&schema_str).unwrap_or_else(|e| panic!("Failed to parse schema: {e}"));
 
-    let record_schema = match &schema {
-        Schema::Record(rs) => rs,
-        _ => panic!("Schema must be a record type"),
+    let Schema::Record(record_schema) = &schema else {
+        panic!("Schema must be a record type")
     };
 
     let field_infos: Vec<FieldInfo> = record_schema
@@ -310,7 +313,7 @@ fn main() {
         .iter()
         .map(extract_field_info)
         .collect::<Result<Vec<_>, _>>()
-        .unwrap_or_else(|e| panic!("Schema error: {}", e));
+        .unwrap_or_else(|e| panic!("Schema error: {e}"));
     let num_fields = field_infos.len();
 
     let csv_file = File::open(&args.input)

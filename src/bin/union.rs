@@ -1,11 +1,11 @@
-use apache_avro::{AvroResult, Schema};
+use apache_avro::{Schema};
 use apache_avro::schema::UnionSchema;
 
 
 
 fn main( ) {
-    let fieldVariants = vec!(Schema::Null,Schema::Double);
-    match  UnionSchema::new(fieldVariants) {
+    let field_variants = vec!(Schema::Null, Schema::Double);
+    match  UnionSchema::new(field_variants) {
         Ok(s) => {println !("{s:?}")}
         Err(e) => {println !("{e:?}")}
     }

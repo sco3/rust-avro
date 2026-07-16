@@ -48,20 +48,21 @@ list:
 run-convert-schema:
     cargo run --bin convert_schema -- $*
 # Run the `converts` binary with the specific arguments required for the
-# tdr6021 struct conversion.
-convert-6021:
-    cargo run --bin converts -- -i data/tdr6021.struct.line -o data/tdr6021.struct.avsc -n tdr6021
+# struct conversion.
+convert-struct:
+    cargo run --bin converts -- -i data/data.struct.line -o data/data.struct.avsc -n data
 
 # Extract CSV from zst and convert to Avro
-write-6021:
+write-avro:
     #!/usr/bin/env bash
     set -euo pipefail
     if [ ! -f data/000000_0.csv ]; then
         zstd -d -k data/000000_0.csv.zst -o data/000000_0.csv
     fi
-    cargo run --release --bin avro_write -- -i data/000000_0.csv -o 0.avro -s data/tdr6021.struct.avsc
-    cargo run --release --bin avro_write_generic_record -- -i data/000000_0.csv -o 0.avro -s data/tdr6021.struct.avsc
-    
+    cargo build --release
+    target/release/avro_write -i data/000000_0.csv -o 0.avro -s data/data.struct.avsc
+    target/release/avro_write_generic_record -i data/000000_0.csv -o 0.avro -s data/data.struct.avsc
+
 
 # Generate documentation and open it in the browser.
 doc:

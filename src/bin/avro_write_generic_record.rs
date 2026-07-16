@@ -43,19 +43,19 @@ fn parse_field_value(raw: &str, field_type: FieldType, union_index: u32) -> Valu
     let inner = match field_type {
         FieldType::String => Value::String(raw.to_string()),
         FieldType::Long => Value::Long(raw.parse::<i64>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as long: {}", raw, e);
+            panic!("Failed to parse '{raw}' as long: {e}");
         })),
         FieldType::Double => Value::Double(raw.parse::<f64>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as double: {}", raw, e);
+            panic!("Failed to parse '{raw}' as double: {e}");
         })),
         FieldType::Int => Value::Int(raw.parse::<i32>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as int: {}", raw, e);
+            panic!("Failed to parse '{raw}' as int: {e}");
         })),
         FieldType::Boolean => Value::Boolean(raw.parse::<bool>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as boolean: {}", raw, e);
+            panic!("Failed to parse '{raw}' as boolean: {e}");
         })),
         FieldType::Float => Value::Float(raw.parse::<f32>().unwrap_or_else(|e| {
-            panic!("Failed to parse '{}' as float: {}", raw, e);
+            panic!("Failed to parse '{raw}' as float: {e}");
         })),
     };
     Value::Union(union_index, Box::new(inner))

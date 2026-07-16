@@ -61,7 +61,7 @@ write-avro:
     fi
     cargo build --release
     target/release/avro_write -i data/000000_0.csv -o 0.avro -s data/data.struct.avsc
-    target/release/avro_write_generic_record -i data/000000_0.csv -o 0.avro -s data/data.struct.avsc
+    target/release/avro_write_generic_record -i data/000000_0.csv -o 0.generic.avro -s data/data.struct.avsc
 
 
 # Generate documentation and open it in the browser.
